@@ -1,4 +1,6 @@
-spring.application.name=patient-service
+spring:
+  application:
+    name: patient-service
 
     # UNCOMMENT TO USE IN MEMORY DATABASE OUTSIDE OF DOCKER
     #  spring:
@@ -37,5 +39,9 @@ spring.application.name=patient-service
 #        dialect:
 #        format_sql: true
 
-server.port=4000
-logging.level.root=info
+logging:
+    level:
+      root: INFO
+
+server:
+  port: 4000
