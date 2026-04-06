@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: analytics-service
+
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
