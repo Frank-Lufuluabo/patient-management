@@ -1,0 +1,13 @@
+### Creates a new patient entity
+POST  http://localhost:4004/api/patients
+Content-Type: application/json
+
+{
+  "name": "Frank Best with billing account",
+  "email": "test_billing_account@gmail.com",
+  "address": "123 Main Road",
+  "dateOfBirth": "1995-10-10",
+  "registeredDate": "2025-11-28"
+}
+
+###
