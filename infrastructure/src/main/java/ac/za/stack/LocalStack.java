@@ -1,5 +1,6 @@
 package ac.za.stack;
 
+import com.amazonaws.services.ec2.model.Vpc;
 import software.amazon.awscdk.*;
 
 public class LocalStack extends Stack {
@@ -17,5 +18,13 @@ public class LocalStack extends Stack {
         new LocalStack(app, "localstack", props);
         app.synth();
         System.out.println("App synthesizing in progress...");
+    }
+
+    private Vpc createVpc(){
+        return Vpc.Builder
+                .create(this, "PatientManagementVPC")
+                .vpcName("PatientManagementVPC")
+                .maxAzs(2)
+                .build();
     }
 }
