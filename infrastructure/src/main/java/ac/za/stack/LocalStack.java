@@ -1,7 +1,7 @@
 package ac.za.stack;
 
-import com.amazonaws.services.ec2.model.Vpc;
 import software.amazon.awscdk.*;
+import software.amazon.awscdk.services.ec2.Vpc;
 
 public class LocalStack extends Stack {
     public LocalStack(final App scope, final String id, final StackProps props) {
@@ -20,7 +20,7 @@ public class LocalStack extends Stack {
         System.out.println("App synthesizing in progress...");
     }
 
-    private Vpc createVpc(){
+    private Vpc createVpc() {
         return Vpc.Builder
                 .create(this, "PatientManagementVPC")
                 .vpcName("PatientManagementVPC")
