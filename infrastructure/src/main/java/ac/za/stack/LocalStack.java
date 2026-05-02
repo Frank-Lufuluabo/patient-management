@@ -8,6 +8,14 @@ public class LocalStack extends Stack {
         super(scope, id, props);
     }
 
+    private Vpc createVpc() {
+        return Vpc.Builder
+                .create(this, "PatientManagementVPC")
+                .vpcName("PatientManagementVPC")
+                .maxAzs(2)
+                .build();
+    }
+
     public static void main(String[] args) {
         App app = new App(AppProps.builder().outdir("./cdk.out").build());
 
@@ -18,13 +26,5 @@ public class LocalStack extends Stack {
         new LocalStack(app, "localstack", props);
         app.synth();
         System.out.println("App synthesizing in progress...");
-    }
-
-    private Vpc createVpc() {
-        return Vpc.Builder
-                .create(this, "PatientManagementVPC")
-                .vpcName("PatientManagementVPC")
-                .maxAzs(2)
-                .build();
     }
 }
