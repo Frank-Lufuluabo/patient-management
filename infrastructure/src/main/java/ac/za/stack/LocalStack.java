@@ -2,6 +2,8 @@ package ac.za.stack;
 
 import software.amazon.awscdk.*;
 import software.amazon.awscdk.services.ec2.Vpc;
+import software.amazon.awscdk.services.ecs.CloudMapNamespaceOptions;
+import software.amazon.awscdk.services.ecs.Cluster;
 
 public class LocalStack extends Stack {
     public LocalStack(final App scope, final String id, final StackProps props) {
@@ -13,6 +15,15 @@ public class LocalStack extends Stack {
                 .create(this, "PatientManagementVPC")
                 .vpcName("PatientManagementVPC")
                 .maxAzs(2)
+                .build();
+    }
+
+    private Cluster createEcsCluster(){
+        return Cluster.Builder.create(this, "PatientManagementCluster")
+                .vpc(vpc)
+                .defaultCloudMapNamespace(CloudMapNamespaceOptions.builder()
+                        .name("patient-management.local")
+                        .build())
                 .build();
     }
 
