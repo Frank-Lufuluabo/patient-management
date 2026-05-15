@@ -13,6 +13,7 @@ public class LocalStack extends Stack {
     private final Vpc vpc;
     public LocalStack(final App scope, final String id, final StackProps props) {
         super(scope, id, props);
+        this.vpc = createVpc();
     }
 
     private Vpc createVpc() {
