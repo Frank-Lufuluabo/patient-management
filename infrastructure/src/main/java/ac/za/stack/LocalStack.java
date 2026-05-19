@@ -1,10 +1,12 @@
 package ac.za.stack;
 
 import software.amazon.awscdk.*;
+import software.amazon.awscdk.services.dax.CfnSubnetGroup;
 import software.amazon.awscdk.services.ec2.ISubnet;
 import software.amazon.awscdk.services.ec2.Vpc;
 import software.amazon.awscdk.services.ecs.*;
 import software.amazon.awscdk.services.ecs.patterns.ApplicationLoadBalancedFargateService;
+import software.amazon.awscdk.services.elasticache.CfnCacheCluster;
 import software.amazon.awscdk.services.msk.CfnCluster;
 
 import java.util.List;
@@ -47,6 +49,24 @@ public class LocalStack extends Stack {
                 .defaultCloudMapNamespace(CloudMapNamespaceOptions.builder()
                         .name("patient-management.local")
                         .build())
+                .build();
+    }
+
+    private CfnCacheCluster createRedisCluster() {
+        CfnSubnetGroup redisSubnetGroup = CfnSubnetGroup.Builder
+                .create(this, "RedisSubnetGroup")
+                .description("Redis/elasticache subnet group")
+                .subnetIds(vpc.getPrivateSubnets().stream()
+                        .map(ISubnet::getSubnetId)
+                        .collect(Collectors.toList()))
+                .build();
+
+        return CfnCacheCluster.Builder.create(this, "RedisCluster")
+                .cacheNodeType("cache.t2.micro")
+                .engine("redis")
+                .numCacheNodes(1)
+                .cacheSubnetGroupName(redisSubnetGroup.getCacheSubnetGroupName())
+                .vpcSecurityGroupIds(List.of(vpc.getVpcDefaultSecurityGroup()))
                 .build();
     }
 
