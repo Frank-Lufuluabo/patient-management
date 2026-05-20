@@ -7,9 +7,12 @@ import software.amazon.awscdk.services.ec2.Vpc;
 import software.amazon.awscdk.services.ecs.*;
 import software.amazon.awscdk.services.ecs.patterns.ApplicationLoadBalancedFargateService;
 import software.amazon.awscdk.services.elasticache.CfnCacheCluster;
+import software.amazon.awscdk.services.logs.LogGroup;
 import software.amazon.awscdk.services.msk.CfnCluster;
+import software.amazon.awscdk.services.servicediscovery.DnsRecordType;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class LocalStack extends Stack {
@@ -51,6 +54,112 @@ public class LocalStack extends Stack {
                         .build())
                 .build();
     }
+
+    private ApplicationLoadBalancedFargateService createApiGatewayService() {
+        FargateTaskDefinition taskDefinition =
+                FargateTaskDefinition.Builder.create(this, "APIGatewayTaskDefinition")
+                        .cpu(256)
+                        .memoryLimitMiB(512)
+                        .build();
+
+        ContainerDefinitionOptions containerOptions =
+                ContainerDefinitionOptions.builder()
+                        .image(ContainerImage.fromRegistry("api-gateway"))
+                        .environment(Map.of(
+                                "SPRING_PROFILES_ACTIVE", "prod",
+                                "AUTH_SERVICE_URL", "http://auth-service.patient-management.local:4005",
+                                "REDIS_HOST", elastiCacheCluster.getAttrRedisEndpointAddress(),
+                                "REDIS_PORT", elastiCacheCluster.getAttrRedisEndpointPort()
+                        ))
+                        .portMappings(List.of(4004).stream()
+                                .map(port -> PortMapping.builder()
+                                        .containerPort(port)
+                                        .hostPort(port)
+                                        .protocol(Protocol.TCP)
+                                        .build())
+                                .toList())
+                        .logging(LogDriver.awsLogs(AwsLogDriverProps.builder()
+                                .logGroup(LogGroup.Builder.create(this, "ApiGatewayLogGroup")
+                                        .logGroupName("/ecs/api-gateway")
+                                        .removalPolicy(RemovalPolicy.DESTROY)
+                                        .retention(RetentionDays.ONE_DAY)
+                                        .build())
+                                .streamPrefix("api-gateway")
+                                .build()))
+                        .build();
+
+
+        taskDefinition.addContainer("APIGatewayContainer", containerOptions);
+
+        ApplicationLoadBalancedFargateService apiGateway =
+                ApplicationLoadBalancedFargateService.Builder.create(this, "APIGatewayService")
+                        .cluster(ecsCluster)
+                        .serviceName("api-gateway")
+                        .taskDefinition(taskDefinition)
+                        .desiredCount(1)
+                        .healthCheckGracePeriod(Duration.seconds(60))
+                        .publicLoadBalancer(true)
+                        .cloudMapOptions(CloudMapOptions.builder()
+                                .name("api-gateway")
+                                .dnsRecordType(DnsRecordType.A)
+                                .build())
+                        .build();
+
+        return apiGateway;
+    }
+    private ApplicationLoadBalancedFargateService createApiGatewayService() {
+        FargateTaskDefinition taskDefinition =
+                FargateTaskDefinition.Builder.create(this, "APIGatewayTaskDefinition")
+                        .cpu(256)
+                        .memoryLimitMiB(512)
+                        .build();
+
+        ContainerDefinitionOptions containerOptions =
+                ContainerDefinitionOptions.builder()
+                        .image(ContainerImage.fromRegistry("api-gateway"))
+                        .environment(Map.of(
+                                "SPRING_PROFILES_ACTIVE", "prod",
+                                "AUTH_SERVICE_URL", "http://auth-service.patient-management.local:4005",
+                                "REDIS_HOST", elastiCacheCluster.getAttrRedisEndpointAddress(),
+                                "REDIS_PORT", elastiCacheCluster.getAttrRedisEndpointPort()
+                        ))
+                        .portMappings(List.of(4004).stream()
+                                .map(port -> PortMapping.builder()
+                                        .containerPort(port)
+                                        .hostPort(port)
+                                        .protocol(Protocol.TCP)
+                                        .build())
+                                .toList())
+                        .logging(LogDriver.awsLogs(AwsLogDriverProps.builder()
+                                .logGroup(LogGroup.Builder.create(this, "ApiGatewayLogGroup")
+                                        .logGroupName("/ecs/api-gateway")
+                                        .removalPolicy(RemovalPolicy.DESTROY)
+                                        .retention(RetentionDays.ONE_DAY)
+                                        .build())
+                                .streamPrefix("api-gateway")
+                                .build()))
+                        .build();
+
+
+        taskDefinition.addContainer("APIGatewayContainer", containerOptions);
+
+        ApplicationLoadBalancedFargateService apiGateway =
+                ApplicationLoadBalancedFargateService.Builder.create(this, "APIGatewayService")
+                        .cluster(ecsCluster)
+                        .serviceName("api-gateway")
+                        .taskDefinition(taskDefinition)
+                        .desiredCount(1)
+                        .healthCheckGracePeriod(Duration.seconds(60))
+                        .publicLoadBalancer(true)
+                        .cloudMapOptions(CloudMapOptions.builder()
+                                .name("api-gateway")
+                                .dnsRecordType(DnsRecordType.A)
+                                .build())
+                        .build();
+
+        return apiGateway;
+    }
+
 
     private CfnCacheCluster createRedisCluster() {
         CfnSubnetGroup redisSubnetGroup = CfnSubnetGroup.Builder
