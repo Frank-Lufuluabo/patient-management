@@ -2,6 +2,7 @@ package ac.za.stack;
 
 import software.amazon.awscdk.*;
 import software.amazon.awscdk.services.dax.CfnSubnetGroup;
+import software.amazon.awscdk.services.docdb.DatabaseInstance;
 import software.amazon.awscdk.services.ec2.ISubnet;
 import software.amazon.awscdk.services.ec2.Vpc;
 import software.amazon.awscdk.services.ecs.*;
@@ -10,6 +11,7 @@ import software.amazon.awscdk.services.elasticache.CfnCacheCluster;
 import software.amazon.awscdk.services.logs.LogGroup;
 import software.amazon.awscdk.services.logs.RetentionDays;
 import software.amazon.awscdk.services.msk.CfnCluster;
+import software.amazon.awscdk.services.route53.CfnHealthCheck;
 import software.amazon.awscdk.services.servicediscovery.DnsRecordType;
 
 import java.util.List;
@@ -29,6 +31,18 @@ public class LocalStack extends Stack {
                 .create(this, "PatientManagementVPC")
                 .vpcName("PatientManagementVPC")
                 .maxAzs(2)
+                .build();
+    }
+
+    private CfnHealthCheck createDbHealthCheck(DatabaseInstance db, String id){
+        return CfnHealthCheck.Builder.create(this, id)
+                .healthCheckConfig(CfnHealthCheck.HealthCheckConfigProperty.builder()
+                        .type("TCP")
+                        .port(Token.asNumber(db.getDbInstanceEndpointPort()))
+                        .ipAddress(db.getDbInstanceEndpointAddress())
+                        .requestInterval(30)
+                        .failureThreshold(3)
+                        .build())
                 .build();
     }
 
