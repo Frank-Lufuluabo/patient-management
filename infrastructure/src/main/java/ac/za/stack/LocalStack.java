@@ -43,7 +43,7 @@ public class LocalStack extends Stack {
                 .create(this, id)
                 .engine(DatabaseInstanceEngine.postgres(
                         PostgresInstanceEngineProps.builder()
-                                .version(PostgresEngineVersion.VER_18_2)
+                                .version(PostgresEngineVersion.VER_18_4)
                                 .build()))
                 .vpc(vpc)
                 .instanceType(InstanceType.of(InstanceClass.BURSTABLE2, InstanceSize.MICRO))
