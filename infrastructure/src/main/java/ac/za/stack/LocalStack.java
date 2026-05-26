@@ -28,6 +28,20 @@ public class LocalStack extends Stack {
     public LocalStack(final App scope, final String id, final StackProps props) {
         super(scope, id, props);
         this.vpc = createVpc();
+
+        FargateService billingService =
+                createFargateService("BillingService",
+                        "billing-service",
+                        List.of(4001,9001),
+                        null,
+                        null);
+
+        FargateService analyticsService =
+                createFargateService("AnalyticsService",
+                        "analytics-service",
+                        List.of(4002),
+                        null,
+                        null);
     }
 
     private Vpc createVpc() {
