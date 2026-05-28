@@ -29,6 +29,25 @@ public class LocalStack extends Stack {
         super(scope, id, props);
         this.vpc = createVpc();
 
+        DatabaseInstance authServiceDb =
+                createDatabase("AuthServiceDB", "auth-service-db");
+
+        DatabaseInstance patientServiceDb =
+                createDatabase("PatientServiceDB", "patient-service-db");
+
+        CfnHealthCheck authDbHealthCheck =
+                createDbHealthCheck(authServiceDb, "AuthServiceDBHealthCheck");
+
+        CfnHealthCheck patientDbHealthCheck =
+                createDbHealthCheck(patientServiceDb, "PatientServiceDBHealthCheck");
+
+        CfnCluster mskCluster = createMskCluster();
+        this.ecsCluster = createEcsCluster();
+        this.elastiCacheCluster = createRedisCluster();
+
+        authService.getNode().addDependency(authDbHealthCheck);
+        authService.getNode().addDependency(authServiceDb);
+
         FargateService billingService =
                 createFargateService("BillingService",
                         "billing-service",
@@ -42,6 +61,43 @@ public class LocalStack extends Stack {
                         List.of(4002),
                         null,
                         null);
+
+        FargateService analyticsService =
+                createFargateService("AnalyticsService",
+                        "analytics-service",
+                        List.of(4002),
+                        null,
+                        null);
+
+        analyticsService.getNode().addDependency(mskCluster);
+
+        FargateService patientService = createFargateService("PatientService",
+                "patient-service",
+                List.of(4000),
+                patientServiceDb,
+                Map.of(
+                        "BILLING_SERVICE_ADDRESS", "billing-service.patient-management.local",
+                        "BILLING_SERVICE_GRPC_PORT", "9001"
+                ));
+        patientService.getNode().addDependency(patientServiceDb);
+        patientService.getNode().addDependency(patientDbHealthCheck);
+        patientService.getNode().addDependency(billingService);
+        patientService.getNode().addDependency(mskCluster);
+        patientService.getNode().addDependency(elastiCacheCluster);
+
+        ApplicationLoadBalancedFargateService apiGateway =
+                createApiGatewayService();
+        apiGateway.getNode().addDependency(elastiCacheCluster);
+
+        FargateService prometheusService = createFargateService(
+                "PrometheusService",
+                "prometheus-prod",
+                List.of(9090),
+                null,
+                null
+        );
+
+        createGrafanaService();
     }
 
     private Vpc createVpc() {
