@@ -1,34 +1,55 @@
 package ac.za.stack;
 
-import software.amazon.awscdk.*;
-import software.amazon.awscdk.services.dax.CfnSubnetGroup;
-import software.amazon.awscdk.services.docdb.DatabaseInstance;
-import software.amazon.awscdk.services.ec2.*;
-import software.amazon.awscdk.services.ecs.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import software.amazon.awscdk.App;
+import software.amazon.awscdk.AppProps;
+import software.amazon.awscdk.BootstraplessSynthesizer;
+import software.amazon.awscdk.Duration;
+import software.amazon.awscdk.RemovalPolicy;
+import software.amazon.awscdk.Stack;
+import software.amazon.awscdk.StackProps;
+import software.amazon.awscdk.Token;
+import software.amazon.awscdk.services.ec2.ISubnet;
+import software.amazon.awscdk.services.ec2.InstanceClass;
+import software.amazon.awscdk.services.ec2.InstanceSize;
+import software.amazon.awscdk.services.ec2.InstanceType;
+import software.amazon.awscdk.services.ec2.Vpc;
+import software.amazon.awscdk.services.ecs.AwsLogDriverProps;
+import software.amazon.awscdk.services.ecs.CloudMapNamespaceOptions;
+import software.amazon.awscdk.services.ecs.CloudMapOptions;
+import software.amazon.awscdk.services.ecs.Cluster;
+import software.amazon.awscdk.services.ecs.ContainerDefinitionOptions;
+import software.amazon.awscdk.services.ecs.ContainerImage;
+import software.amazon.awscdk.services.ecs.FargateService;
+import software.amazon.awscdk.services.ecs.FargateTaskDefinition;
+import software.amazon.awscdk.services.ecs.LogDriver;
+import software.amazon.awscdk.services.ecs.PortMapping;
 import software.amazon.awscdk.services.ecs.Protocol;
 import software.amazon.awscdk.services.ecs.patterns.ApplicationLoadBalancedFargateService;
 import software.amazon.awscdk.services.elasticache.CfnCacheCluster;
+import software.amazon.awscdk.services.elasticache.CfnSubnetGroup;
 import software.amazon.awscdk.services.logs.LogGroup;
 import software.amazon.awscdk.services.logs.RetentionDays;
 import software.amazon.awscdk.services.msk.CfnCluster;
 import software.amazon.awscdk.services.rds.Credentials;
+import software.amazon.awscdk.services.rds.DatabaseInstance;
 import software.amazon.awscdk.services.rds.DatabaseInstanceEngine;
 import software.amazon.awscdk.services.rds.PostgresEngineVersion;
 import software.amazon.awscdk.services.rds.PostgresInstanceEngineProps;
 import software.amazon.awscdk.services.route53.CfnHealthCheck;
 import software.amazon.awscdk.services.servicediscovery.DnsRecordType;
 
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 public class LocalStack extends Stack {
     private final Vpc vpc;
     private final Cluster ecsCluster;
     private final CfnCacheCluster elastiCacheCluster;
 
-    public LocalStack(final App scope, final String id, final StackProps props) {
+    public LocalStack(final App scope, final String id, final StackProps props){
         super(scope, id, props);
+
         this.vpc = createVpc();
 
         DatabaseInstance authServiceDb =
@@ -47,6 +68,13 @@ public class LocalStack extends Stack {
         this.ecsCluster = createEcsCluster();
         this.elastiCacheCluster = createRedisCluster();
 
+        FargateService authService =
+                createFargateService("AuthService",
+                        "auth-service",
+                        List.of(4005),
+                        authServiceDb,
+                        Map.of("JWT_SECRET", ""));
+
         authService.getNode().addDependency(authDbHealthCheck);
         authService.getNode().addDependency(authServiceDb);
 
@@ -54,13 +82,6 @@ public class LocalStack extends Stack {
                 createFargateService("BillingService",
                         "billing-service",
                         List.of(4001,9001),
-                        null,
-                        null);
-
-        FargateService analyticsService =
-                createFargateService("AnalyticsService",
-                        "analytics-service",
-                        List.of(4002),
                         null,
                         null);
 
@@ -102,7 +123,7 @@ public class LocalStack extends Stack {
         createGrafanaService();
     }
 
-    private Vpc createVpc() {
+    private Vpc createVpc(){
         return Vpc.Builder
                 .create(this, "PatientManagementVPC")
                 .vpcName("PatientManagementVPC")
@@ -115,7 +136,7 @@ public class LocalStack extends Stack {
                 .create(this, id)
                 .engine(DatabaseInstanceEngine.postgres(
                         PostgresInstanceEngineProps.builder()
-                                .version(PostgresEngineVersion.VER_18_4)
+                                .version(PostgresEngineVersion.VER_17_2)
                                 .build()))
                 .vpc(vpc)
                 .instanceType(InstanceType.of(InstanceClass.BURSTABLE2, InstanceSize.MICRO))
@@ -161,6 +182,7 @@ public class LocalStack extends Stack {
                         .build())
                 .build();
     }
+
 
     private ApplicationLoadBalancedFargateService createApiGatewayService() {
         FargateTaskDefinition taskDefinition =
@@ -232,6 +254,7 @@ public class LocalStack extends Stack {
                 .vpcSecurityGroupIds(List.of(vpc.getVpcDefaultSecurityGroup()))
                 .build();
     }
+
 
     private ApplicationLoadBalancedFargateService createGrafanaService(){
         FargateTaskDefinition taskDefinition = FargateTaskDefinition.Builder
